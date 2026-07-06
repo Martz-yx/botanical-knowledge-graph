@@ -1,4 +1,4 @@
-# Flora-Graph / Botanical Knowledge Graph
+# FloGraph / Botanical Knowledge Graph
 
 Neo4j knowledge graph for ~320 cultivated plant species across 20 families,
 covering taxonomy, horticultural care profiles, and ecological interactions.
