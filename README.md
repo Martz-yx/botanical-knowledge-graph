@@ -1,4 +1,4 @@
-# Botanical Knowledge Graph 🌱
+# FloGraph: Botanical Knowledge Graph 🌱
 
 A full-stack, AI-powered Graph Database implementation for horticultural taxonomy and plant care data. This repository showcases the power of **Neo4j**, **FastAPI**, and **React** integrated with LLM-driven data generation pipelines.
 
