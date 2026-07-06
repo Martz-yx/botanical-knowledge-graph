@@ -15,34 +15,34 @@ sourcing, cleaning, or ingesting data.
 (:Phylum       {name})
 (:Class        {name})
 (:Order        {name})
-(:Family       {name, scientific_name, description})
-(:Subfamily    {name, scientific_name, description})   // only where taxonomically real — do not invent placeholders
-(:Genus        {name, scientific_name, description})
+(:Family       {name, scientificName, description})
+(:Subfamily    {name, scientificName, description})   // only where taxonomically real — do not invent placeholders
+(:Genus        {name, scientificName, description})
 ```
 
 ### Species (core node)
 
 ```
 (:Species {
-  scientific_name,
-  common_names: [],
-  image_url,
-  is_invasive: bool
+  scientificName,
+  commonNames: [],
+  imageUrl,
+  isInvasive: bool,
+  growthPattern,         // e.g. climbing, rosette, shrub, trailing
+  matureHeightCm,
+  toxicityNotes
 })
 ```
 
-### CareProfile (separate node, not properties on Species)
+### CareProfile (shared environmental hub)
 
 ```
 (:CareProfile {
-  watering_level,        // e.g. low / medium / high, or a literal frequency
-  ppfd_min,               // µmol/m²/s — Photosynthetic Photon Flux Density
-  ppfd_max,
-  light_requirement,
-  soil_type,
-  growth_pattern,         // e.g. climbing, rosette, shrub, trailing
-  mature_height_cm,
-  toxicity_notes
+  wateringLevel,        // e.g. low / medium / high, or a literal frequency
+  ppfdMin,               // µmol/m²/s — Photosynthetic Photon Flux Density
+  ppfdMax,
+  lightRequirement,
+  soilType
 })
 ```
 
@@ -80,7 +80,6 @@ a family regardless of subfamily" use a variable-length traversal:
 
 ```
 (:Species)-[:HAS_CARE_PROFILE]->(:CareProfile)
-(:CareProfile)-[:SIMILAR_TO {similarity_score}]->(:CareProfile)
 ```
 
 ### Cross-cutting relationships (the "why graph, not tree" edges)

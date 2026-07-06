@@ -13,6 +13,8 @@ venv/
 .env
 .env.local
 .env.*.local
+Neo4j-*.txt
+neo4j/
 
 # OS
 .DS_Store

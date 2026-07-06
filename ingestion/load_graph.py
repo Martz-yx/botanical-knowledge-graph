@@ -47,10 +47,24 @@ def _bool(value):
     return v.lower() in ("true", "1", "yes")
 
 
+def _parse_regions(value):
+    v = _v(value)
+    if not v:
+        return []
+    # Split by semicolon or slash
+    regions = []
+    for part in v.replace(';', '/').split('/'):
+        part = part.split('(')[0].strip() # Remove parentheticals
+        if part.lower().startswith('widely') or part == '':
+            continue
+        regions.append(part)
+    return regions
+
+
 # ── Constraints ──────────────────────────────────────────────────────────────
 def create_constraints(tx):
     constraints = [
-        ("Species",      "scientific_name"),
+        ("Species",      "scientificName"),
         ("Genus",        "name"),
         ("Family",       "name"),
         ("Order",        "name"),
@@ -59,6 +73,7 @@ def create_constraints(tx):
         ("Kingdom",      "name"),
         ("Pollinator",   "name"),
         ("Subfamily",    "name"),
+        ("Region",       "name"),
     ]
     for label, prop in constraints:
         if label == "Subfamily":
@@ -87,11 +102,11 @@ LOAD_FAMILY_CYPHER = """
 UNWIND $rows AS row
 
 // --- Taxonomic backbone ----------------------------------------------------
-MERGE (k:Kingdom {name: row.kingdom})
-MERGE (p:Phylum  {name: row.phylum})   MERGE (p)-[:BELONGS_TO]->(k)
-MERGE (c:Class   {name: row.class})    MERGE (c)-[:BELONGS_TO]->(p)
-MERGE (o:Order   {name: row.order})    MERGE (o)-[:BELONGS_TO]->(c)
-MERGE (f:Family  {name: row.family})   MERGE (f)-[:BELONGS_TO]->(o)
+MERGE (k:Kingdom {name: coalesce(row.kingdom, "Unknown Kingdom")})
+MERGE (p:Phylum  {name: coalesce(row.phylum, "Unknown Phylum")})   MERGE (p)-[:BELONGS_TO]->(k)
+MERGE (c:Class   {name: coalesce(row.class, "Unknown Class")})    MERGE (c)-[:BELONGS_TO]->(p)
+MERGE (o:Order   {name: coalesce(row.order, "Unknown Order")})    MERGE (o)-[:BELONGS_TO]->(c)
+MERGE (f:Family  {name: coalesce(row.family, "Unknown Family")})  MERGE (f)-[:BELONGS_TO]->(o)
 
 // subname is only set when present; coerce whitespace to null
 WITH row, f,
@@ -117,28 +132,35 @@ FOREACH (_ IN CASE WHEN subname IS NULL THEN [] ELSE [1] END |
 )
 
 // Species and care profile
-MERGE (s:Species {scientific_name: row.scientific_name})
+MERGE (s:Species {scientificName: row.scientific_name})
 MERGE (s)-[:BELONGS_TO]->(g)
-  SET s.common_names   = row.common_names_list,
-      s.image_url      = row.image_url,
-      s.is_invasive    = row.is_invasive_val
+  SET s.commonNames    = row.common_names_list,
+      s.imageUrl       = row.image_url,
+      s.isInvasive     = row.is_invasive_val,
+      s.growthPattern  = row.growth_pattern,
+      s.matureHeightCm = row.mature_height_cm,
+      s.toxicityNotes  = row.toxicity_notes
 
-// CareProfile (only when care data exists)
+// Shared CareProfile (only when care data exists)
 FOREACH (_ IN CASE
     WHEN row.watering_level    IS NULL
-     AND row.ppfd_min          IS NULL
      AND row.light_requirement IS NULL
+     AND row.soil_type         IS NULL
     THEN [] ELSE [1] END |
-    MERGE (cp:CareProfile {species_ref: row.scientific_name})
-    SET cp.watering_level    = row.watering_level,
-        cp.ppfd_min          = row.ppfd_min,
-        cp.ppfd_max          = row.ppfd_max,
-        cp.light_requirement = row.light_requirement,
-        cp.soil_type         = row.soil_type,
-        cp.growth_pattern    = row.growth_pattern,
-        cp.mature_height_cm  = row.mature_height_cm,
-        cp.toxicity_notes    = row.toxicity_notes
+    MERGE (cp:CareProfile {
+        wateringLevel: coalesce(row.watering_level, "Unknown"),
+        lightRequirement: coalesce(row.light_requirement, "Unknown"),
+        soilType: coalesce(row.soil_type, "Unknown")
+    })
+    ON CREATE SET cp.ppfdMin = row.ppfd_min,
+                  cp.ppfdMax = row.ppfd_max
     MERGE (s)-[:HAS_CARE_PROFILE]->(cp)
+)
+
+// Regions (Native To)
+FOREACH (reg IN row.native_regions_list |
+    MERGE (r:Region {name: reg})
+    MERGE (s)-[:NATIVE_TO]->(r)
 )
 """
 
@@ -151,20 +173,23 @@ def load_family_file(tx, path):
             sname = _v(row.get("scientific_name", ""))
             kingdom = _v(row.get("kingdom", ""))
             phylum = _v(row.get("phylum", ""))
-            if not sname or not kingdom or not phylum:
+            genus = _v(row.get("genus", ""))
+            if not sname or not kingdom or not phylum or not genus:
                 if not sname:
                     print(f"  WARNING: skipping row with empty scientific_name in {path}")
                 elif not kingdom:
                     print(f"  WARNING: skipping {sname} — empty kingdom in {path}")
-                else:
+                elif not phylum:
                     print(f"  WARNING: skipping {sname} — empty phylum in {path}")
+                else:
+                    print(f"  WARNING: skipping {sname} — empty genus in {path}")
                 continue
             payload = {
                 "scientific_name":    sname,
                 "common_names_list":  _list(row.get("common_names", "")),
                 "image_url":          _v(row.get("image_url", "")),
                 "is_invasive_val":    _bool(row.get("is_invasive", "")),
-                "genus":              _v(row.get("genus", "")),
+                "genus":              genus,
                 "subfamily":          _v(row.get("subfamily", "")),
                 "family":             _v(row.get("family", "")),
                 "order":              _v(row.get("order", "")),
@@ -179,6 +204,7 @@ def load_family_file(tx, path):
                 "growth_pattern":     _v(row.get("growth_pattern", "")),
                 "mature_height_cm":   _v(row.get("mature_height_cm", "")),
                 "toxicity_notes":     _v(row.get("toxicity_notes", "")),
+                "native_regions_list": _parse_regions(row.get("native_regions", "")),
             }
             rows.append(payload)
     tx.run(LOAD_FAMILY_CYPHER, rows=rows)
@@ -188,8 +214,8 @@ def load_family_file(tx, path):
 # ── Edge loaders ─────────────────────────────────────────────────────────────
 COMPANION_CYPHER = """
 UNWIND $rows AS row
-MATCH (a:Species {scientific_name: row.species_a})
-MATCH (b:Species {scientific_name: row.species_b})
+MATCH (a:Species {scientificName: row.species_a})
+MATCH (b:Species {scientificName: row.species_b})
 FOREACH (_ IN CASE WHEN a IS NULL OR b IS NULL THEN [] ELSE [1] END |
     MERGE (a)-[r:GROWS_WELL_WITH]->(b)
     SET r.confidence = row.confidence, r.notes = row.notes, r.source = row.source
@@ -198,8 +224,8 @@ FOREACH (_ IN CASE WHEN a IS NULL OR b IS NULL THEN [] ELSE [1] END |
 
 INHIBIT_CYPHER = """
 UNWIND $rows AS row
-MATCH (a:Species {scientific_name: row.species_a})
-MATCH (b:Species {scientific_name: row.species_b})
+MATCH (a:Species {scientificName: row.species_a})
+MATCH (b:Species {scientificName: row.species_b})
 FOREACH (_ IN CASE WHEN a IS NULL OR b IS NULL THEN [] ELSE [1] END |
     MERGE (a)-[r:INHIBITS]->(b)
     SET r.confidence = row.confidence, r.notes = row.notes, r.source = row.source
@@ -242,7 +268,7 @@ def load_companion_edges(tx):
 
 POLLINATOR_CYPHER = """
 UNWIND $rows AS row
-MATCH (s:Species {scientific_name: row.species})
+MATCH (s:Species {scientificName: row.species})
 FOREACH (_ IN CASE WHEN s IS NULL THEN [] ELSE [1] END |
     MERGE (p:Pollinator {name: row.pollinator_name})
       SET p.type = row.pollinator_type
@@ -280,9 +306,9 @@ def load_pollinator_edges(tx):
 # ── Summary ──────────────────────────────────────────────────────────────────
 def print_summary(tx):
     labels = ["Species", "CareProfile", "Genus", "Family", "Subfamily",
-              "Order", "Class", "Phylum", "Kingdom", "Pollinator"]
+              "Order", "Class", "Phylum", "Kingdom", "Pollinator", "Region"]
     rels = ["BELONGS_TO", "HAS_CARE_PROFILE", "GROWS_WELL_WITH",
-            "INHIBITS", "POLLINATED_BY"]
+            "INHIBITS", "POLLINATED_BY", "NATIVE_TO"]
     print()
     for label in labels:
         c = tx.run(f"MATCH (n:{label}) RETURN count(n) AS c").single()["c"]

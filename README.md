@@ -1,113 +1,85 @@
-# FloGraph / Botanical Knowledge Graph
+# Botanical Knowledge Graph 🌱
 
-Neo4j knowledge graph for ~320 cultivated plant species across 20 families,
-covering taxonomy, horticultural care profiles, and ecological interactions.
+A full-stack, AI-powered Graph Database implementation for horticultural taxonomy and plant care data. This repository showcases the power of **Neo4j**, **FastAPI**, and **React** integrated with LLM-driven data generation pipelines.
 
-## Tech Stack
+## Project Architecture
 
-- Database: `neo4j:5` (Aura-compatible)
-- Driver: `neo4j` Python SDK
-- Schema: `schema/flora-graph-schema.md`
-- Source material: `Documents/flora-graph/`
+This project is divided into distinct, decoupled services:
 
-## Repo structure
+1. **[Data Sourcing](./sourcing/README.md):** A hybrid pipeline bridging the strict biological taxonomy of the **GBIF API** with the rich horticultural context of **Google Gemini 2.5 Flash**.
+2. **[Graph Ingestion](./ingestion/README.md):** Cypher-based ETL scripts utilizing the Neo4j Python Driver to map raw CSVs into highly optimized, deduplicated graph structures.
+3. **[FastAPI Backend](./api/README.md):** A lightweight Python REST API serving dynamic hierarchical data from Neo4j Aura.
+4. **[React Visualizer](./visualizer/README.md):** A stunning, dark-mode web application using `ForceGraph2D` to interactively explore the botanical taxonomy.
 
+---
+
+## The Graph Schema
+
+The database leverages an optimized **Many-to-1 Shared Hub** model. Instead of assigning individual properties to every plant, hundreds of species share identical `CareProfile` nodes, drastically reducing redundancy and allowing for instantaneous "Similar Plant" recommendations via graph traversal.
+
+```mermaid
+graph BT
+    %% Taxonomy Backbone
+    S[Species] -->|BELONGS_TO| G[Genus]
+    G -->|BELONGS_TO| SF[Subfamily]
+    G -->|BELONGS_TO| F[Family]
+    SF -->|BELONGS_TO| F
+    F -->|BELONGS_TO| O[Order]
+    O -->|BELONGS_TO| C[Class]
+    C -->|BELONGS_TO| P[Phylum]
+    P -->|BELONGS_TO| K[Kingdom]
+
+    %% Ecological & Care Edges
+    S -->|HAS_CARE_PROFILE| CP[CareProfile]
+    S -->|GROWS_WELL_WITH| S2[Species]
+    S -->|INHIBITS| S3[Species]
+    S -->|POLLINATED_BY| POL[Pollinator]
+    S -->|NATIVE_TO| R[Region]
+
+    %% Styling
+    classDef taxon fill:#1f2937,stroke:#3bf19a,stroke-width:2px,color:#e2f1ea
+    classDef eco fill:#374151,stroke:#a78bfa,stroke-width:2px,color:#e2f1ea
+    
+    class S,G,SF,F,O,C,P,K taxon
+    class CP,S2,S3,POL,R eco
 ```
-botanical-knowledge-graph/
-├── schema/
-│   ├── flora-graph-schema.md          # graph schema definition
-│   ├── flora-graph-species-list.md    # authoritative species list by family
-│   └── ...
-├── processed/                         # one CSV per family + edge files
-│   ├── araceae.csv, bignoniaceae.csv, ...
-│   ├── companion_edges.csv
-│   └── pollinator_edges.csv
-├── ingestion/
-│   └── load_graph.py                  # pipeline that loads CSV → Neo4j
-├── sourcing-log.md                    # known gaps / uncertainties
-├── docker-compose.yml
-├── .env
-└── README.md
+
+---
+
+## Quick Start
+
+### 1. Environment Setup
+Create a `.env` file in the root directory containing your Neo4j and Gemini API credentials:
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
-## Running locally (Docker)
+### 2. Generating Data
+The hybrid sourcing engine fetches strict taxonomy from GBIF and passes it to Gemini to generate horticultural data (water needs, sunlight, companions, pollinators).
+```powershell
+# Run the mass sourcer to generate hundreds of plants across 20 botanical families
+powershell -ExecutionPolicy Bypass -File sourcing/mass_source.ps1
+```
 
+### 3. Launching the App
+Run the backend and frontend simultaneously to explore the database visually!
+
+**Start the API:**
 ```bash
-docker compose up neo4j -d
-cp .env.example .env   # set NEO4J_PASSWORD
-python3 ingestion/load_graph.py
-open http://localhost:7474
+cd api
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Running against Neo4j Aura
-
-Populate `.env` with:
-
+**Start the Visualizer:**
+```powershell
+cd visualizer
+powershell -ExecutionPolicy Bypass -Command "npm run dev"
 ```
-NEO4J_URI=neo4j+s://5eeb9cc0.databases.neo4j.io
-NEO4J_USER=5eeb9cc0
-NEO4J_PASSWORD=<your-key>
-```
+Open `http://localhost:5173` in your browser.
 
-Then:
-
-```bash
-python3 ingestion/load_graph.py
-```
-
-## Graph model
-
-### Node labels
-
-- `Kingdom`     — Plantae
-- `Phylum`      Tracheophyta, Bryophyta, ...
-- `Class`       Liliopsida, Magnoliopsida, ...
-- `Order`       Asparagales, Rosales, Solanales, ...
-- `Family`      20 families
-- `Subfamily`   32 subfamilies (where applicable)
-- `Genus`       242 genera
-- `Species`     320 species
-- `CareProfile` 316 species with horticultural care data
-- `Pollinator`  14 pollinator taxa
-
-### Relationships
-
-- `(Lower)-[:BELONGS_TO]->(Higher)` — taxonomic backbone
-- `(Species)-[:HAS_CARE_PROFILE]->(CareProfile)` — care data
-- `(Species)-[:GROWS_WELL_WITH]->(Species)` — companion planting
-- `(Species)-[:INHIBITS]->(Species)` — allelopathy
-- `(Species)-[:POLLINATED_BY]->(Pollinator)` — pollination ecology
-
-### Constraints
-
-Unique indexes on every primary label property (`scientific_name`, `name`),
-plus composite uniqueness on `(Subfamily.family, Subfamily.name)`.
-
-## Sample Cypher
-
-```cypher
-// companion plants for Solanum lycopersicum (tomato)
-MATCH (sp:Species {scientific_name:'Solanum lycopersicum'})-[r:GROWS_WELL_WITH]->(c)
-RETURN sp.scientific_name AS sp, type(r) AS rel, c.scientific_name AS companion, r.confidence AS conf
-
-// full taxonomy chain for any species
-MATCH (sp:Species {scientific_name:'Solanum lycopersicum'})-[*1..8]->(top)
-RETURN [n in nodes(p) | n.name] AS chain
-```
-
-## Sourcing-log
-
-Gaps, ambiguities, and data provenance notes are tracked in `sourcing-log.md`.
-
-- 3 Orchidaceae species with partial care data (`Zygopetalum intermedium`, `Masdevallia coccinea`, `Bulbophyllum lobbii`)
-- Sansevieria taxonomic synonymy noted (currently treated as Dracaena per APG IV)
-
-## Data sources
-
-Primary: Wikipedia + Wikispecies (background taxonomy), horticultural references
-(Streib 1989, NPHR extension, ASPCA toxicity database, University extension services).
-
-## License
-
-Source data sourced from public-domain horticultural/reference materials. See
-`sourcing-log.md` for individual line provenance.
+---
+*Built as a showcase for Neo4j Graph Database implementation and AI-driven data pipelines.*
