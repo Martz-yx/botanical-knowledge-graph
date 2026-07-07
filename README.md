@@ -11,7 +11,7 @@ This project is divided into distinct, decoupled services:
 1. **[Data Sourcing](./sourcing/README.md):** A hybrid pipeline bridging the strict biological taxonomy of the **GBIF API** with the rich horticultural context of **Google Gemini 2.5 Flash**.
 2. **[Graph Ingestion](./ingestion/README.md):** Cypher-based ETL scripts utilizing the Neo4j Python Driver to map raw CSVs into highly optimized, deduplicated graph structures.
 3. **[FastAPI Backend](./api/README.md):** A lightweight Python REST API serving dynamic hierarchical data from Neo4j Aura.
-4. **[React Visualizer](./visualizer/README.md):** A stunning, dark-mode web application using `ForceGraph2D` to interactively explore the botanical taxonomy.
+4. **[Next.js Web App](./webapp):** A stunning, dark-mode web application built on Vercel to interactively explore the botanical taxonomy and care profiles.
 
 ---
 
@@ -76,12 +76,12 @@ cd api
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Start the Visualizer:**
+**Start the Web App:**
 ```powershell
-cd visualizer
-powershell -ExecutionPolicy Bypass -Command "npm run dev"
+cd webapp
+npm run dev
 ```
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:3000` in your browser.
 
 ---
 *Built as a showcase for Neo4j Graph Database implementation and AI-driven data pipelines.*
