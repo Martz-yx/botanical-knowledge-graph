@@ -2,6 +2,8 @@
 
 A full-stack, AI-powered Graph Database implementation for horticultural taxonomy and plant care data. This repository showcases the power of **Neo4j**, **FastAPI**, and **React** integrated with LLM-driven data generation pipelines.
 
+<img width="1654" height="940" alt="visualisation(2)" src="https://github.com/user-attachments/assets/998b35d3-567c-48fd-a2e6-ceb7269a3983" />
+
 ## Project Architecture
 
 This project is divided into distinct, decoupled services:
