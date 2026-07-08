@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
+import Logo from './icon.png';
 import { Search, Leaf, Droplets, Sun, Bug, Globe, Moon, Trees, Sprout, Haze, Orbit, Waypoints, GitFork, CloudRain, TrendingUp } from 'lucide-react';
 import Graph from '@/components/Graph';
 
@@ -238,9 +240,12 @@ export default function Home() {
       {/* Sidebar Overlay */}
       <div className="sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h1 className="title">FloGraph</h1>
-            <p className="subtitle">Botanical Knowledge Graph</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Image src={Logo} alt="FloGraph Logo" width={48} height={48} style={{ borderRadius: '8px' }} />
+            <div>
+              <h1 className="title" style={{ marginBottom: '2px' }}>FloGraph</h1>
+              <p className="subtitle">Botanical Knowledge Graph</p>
+            </div>
           </div>
         </div>
         
