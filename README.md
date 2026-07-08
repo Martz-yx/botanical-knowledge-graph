@@ -1,28 +1,24 @@
 # FloGraph: Botanical Knowledge Graph 🌱
 
-A full-stack, AI-powered Graph Database implementation for horticultural taxonomy and plant care data. This repository showcases the power of **Neo4j**, **FastAPI**, and **React** integrated with LLM-driven data generation pipelines.
-
-<img width="1654" height="940" alt="visualisation(2)" src="https://github.com/user-attachments/assets/998b35d3-567c-48fd-a2e6-ceb7269a3983" />
+A full-stack Graph Database implementation for horticultural taxonomy and plant care data. This repository showcases the power of **Neo4j** and **Next.js**.
 
 ## Project Architecture
 
-This project is divided into distinct, decoupled services:
+This project consists of a unified Next.js application, an AI-assisted Markdown ingestion pipeline, and an optimized graph database:
 
-1. **[Data Sourcing](./sourcing/README.md):** A hybrid pipeline bridging the strict biological taxonomy of the **GBIF API** with the rich horticultural context of **Google Gemini 2.5 Flash**.
-2. **[Graph Ingestion](./ingestion/README.md):** Cypher-based ETL scripts utilizing the Neo4j Python Driver to map raw CSVs into highly optimized, deduplicated graph structures.
-3. **[FastAPI Backend](./api/README.md):** A lightweight Python REST API serving dynamic hierarchical data from Neo4j Aura.
-4. **[Next.js Web App](./webapp):** A stunning, dark-mode web application built on Vercel to interactively explore the botanical taxonomy and care profiles.
+1. **[Next.js Web App](./webapp):** A stunning, dark-mode web application built on Next.js. It features a public interface for interactive Graph-BFS exploration (Network vs Lineage mode) and a Notion-style Admin Dashboard for manually updating plant data.
+2. **Python Sourcing Engine:** A set of scripts that parse raw horticultural Markdown files and CSV data, use biological heuristics to infer environmental needs, and inject them into the Neo4j database.
 
 ---
 
 ## The Graph Schema
 
-The database leverages an optimized **Many-to-1 Shared Hub** model. Instead of assigning individual properties to every plant, hundreds of species share identical `CareProfile` nodes, drastically reducing redundancy and allowing for instantaneous "Similar Plant" recommendations via graph traversal.
+The database leverages an optimized taxonomy backbone. All care properties (e.g. `humidity`, `growthRate`, `wateringLevel` 1-5 scale), regions, and pollinators are flattened directly into the `Species` nodes for maximum retrieval efficiency, while preserving the strict biological taxonomy hierarchy in the relationships.
 
 ```mermaid
 graph BT
     %% Taxonomy Backbone
-    S[Species] -->|BELONGS_TO| G[Genus]
+    S["Species (Humidity, Growth Rate, Watering)"] -->|BELONGS_TO| G[Genus]
     G -->|BELONGS_TO| SF[Subfamily]
     G -->|BELONGS_TO| F[Family]
     SF -->|BELONGS_TO| F
@@ -31,19 +27,9 @@ graph BT
     C -->|BELONGS_TO| P[Phylum]
     P -->|BELONGS_TO| K[Kingdom]
 
-    %% Ecological & Care Edges
-    S -->|HAS_CARE_PROFILE| CP[CareProfile]
-    S -->|GROWS_WELL_WITH| S2[Species]
-    S -->|INHIBITS| S3[Species]
-    S -->|POLLINATED_BY| POL[Pollinator]
-    S -->|NATIVE_TO| R[Region]
-
     %% Styling
     classDef taxon fill:#1f2937,stroke:#3bf19a,stroke-width:2px,color:#e2f1ea
-    classDef eco fill:#374151,stroke:#a78bfa,stroke-width:2px,color:#e2f1ea
-    
     class S,G,SF,F,O,C,P,K taxon
-    class CP,S2,S3,POL,R eco
 ```
 
 ---

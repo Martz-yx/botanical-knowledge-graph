@@ -2,10 +2,38 @@
   --bg-color: #0b0c10;
   --panel-bg: rgba(31, 40, 51, 0.7);
   --text-main: #c5c6c7;
-  --text-highlight: #66fcf1;
-  --accent: #45a29e;
+  --text-highlight: #2ecc71;
+  --accent: #27ae60;
   --border-radius: 12px;
   --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+body.light-theme {
+  --bg-color: #f4f7f6;
+  --panel-bg: rgba(255, 255, 255, 0.85);
+  --text-main: #2c3e50;
+  --text-highlight: #27ae60;
+  --accent: #2ecc71;
+}
+
+body.light-theme .search-input {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light-theme .result-name,
+body.light-theme .stat-value {
+  color: #222;
+}
+
+body.light-theme .care-profile {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: rgba(39, 174, 96, 0.3);
+}
+
+body.light-theme .care-stat {
+  border-color: rgba(0,0,0,0.1);
 }
 
 * {
@@ -63,15 +91,21 @@ body {
 }
 
 .title {
-  color: var(--text-highlight);
-  font-size: 1.8rem;
+  font-family: var(--font-syne), var(--font-sans);
+  font-size: 3.5rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.5px;
+  margin-bottom: 0.2rem;
+  letter-spacing: -1px;
+  background: linear-gradient(to top, #093318, #2ecc71);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .subtitle {
-  font-size: 0.9rem;
+  font-family: var(--font-syne), var(--font-sans);
+  font-size: 1.1rem;
+  font-weight: 600;
   opacity: 0.8;
   margin-bottom: 1.5rem;
 }
@@ -192,6 +226,7 @@ body {
 .stat-value {
   color: white;
   font-weight: 600;
+  text-align: right;
 }
 
 /* Graph Controls */
