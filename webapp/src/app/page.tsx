@@ -241,11 +241,11 @@ export default function Home() {
       <div className="sidebar">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <h1 className="title" style={{ marginBottom: '2px' }}>FloGraph</h1>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '16px' }}>
+              <h1 className="title" style={{ marginBottom: '2px', lineHeight: '1' }}>FloGraph</h1>
               <Image src={Logo} alt="FloGraph Logo" width={64} height={64} style={{ borderRadius: '8px' }} />
             </div>
-            <p className="subtitle">Botanical Knowledge Graph</p>
+            <p className="subtitle" style={{ marginTop: '4px' }}>Botanical Knowledge Graph</p>
           </div>
         </div>
         
